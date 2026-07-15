@@ -1,0 +1,6 @@
+{
+  "name": "Supervisi Observasi Pembelajaran",
+  "description": "Aplikasi supervisi observasi proses pembelajaran mobile-friendly dengan dashboard interaktif untuk memantau progres secara real-time.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
