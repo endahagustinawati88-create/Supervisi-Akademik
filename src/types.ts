@@ -1,7 +1,13 @@
-export type UserRole = 'admin' | 'guru';
+export type UserRole = 'admin' | 'pengawas' | 'kepsek' | 'guru';
+
+export interface AppSettings {
+  appName: string;
+  schoolName: string;
+  themeColor: string;
+}
 
 export interface User {
-  id: string; // 'admin' or NIP for guru
+  id: string; // 'admin', 'pengawas', 'kepsek' or NIP for guru
   username: string;
   name: string;
   role: UserRole;
@@ -10,17 +16,24 @@ export interface User {
   className?: string;
   subject?: string;
   photoUrl?: string;
+  driveUrl?: string;
+  supervisionSchedule?: string;
+  moduleIdentity?: {
+    topic: string;
+    timeAllocation: string;
+    targetPhase: string;
+  };
 }
 
-export type SupervisionCategory = 
-  | 'I_PENDAHULUAN'
-  | 'II_A_MATERI'
-  | 'II_B_STRATEGI'
-  | 'II_C_MEDIA'
-  | 'II_D_ABAD21'
-  | 'II_E_KETERLIBATAN'
-  | 'II_F_BAHASA'
-  | 'III_PENUTUP';
+export type SupervisionCategory = string; // 
+
+
+
+
+
+
+
+
 
 export interface InstrumentItem {
   id: number;

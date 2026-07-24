@@ -1,6 +1,6 @@
 import { InstrumentItem, User, Supervision } from './types';
 
-export const INSTRUMENT_ITEMS: InstrumentItem[] = [
+export const DEFAULT_INSTRUMENT_ITEMS: InstrumentItem[] = [
   // I. Kegiatan Pendahuluan (1-8)
   {
     id: 1,
@@ -306,6 +306,67 @@ export const INSTRUMENT_ITEMS: InstrumentItem[] = [
   }
 ];
 
+export interface Category {
+  id: string;
+  label: string;
+}
+
+export const DEFAULT_CATEGORIES: Category[] = [
+  { id: 'I_PENDAHULUAN', label: 'I. Kegiatan Pendahuluan' },
+  { id: 'II_A_MATERI', label: 'II.A. Penguasaan Materi' },
+  { id: 'II_B_STRATEGI', label: 'II.B. Strategi Pembelajaran' },
+  { id: 'II_C_MEDIA', label: 'II.C. Pemanfaatan Sumber Belajar/Media' },
+  { id: 'II_D_ABAD21', label: 'II.D. Pembelajaran Abad 21' },
+  { id: 'II_E_KETERLIBATAN', label: 'II.E. Keterlibatan Siswa & Diferensiasi' },
+  { id: 'II_F_BAHASA', label: 'II.F. Penggunaan Bahasa' },
+  { id: 'III_PENUTUP', label: 'III. Kegiatan Penutup' },
+];
+
+export const getCategories = (): Category[] => {
+  const saved = localStorage.getItem('sipro_categories');
+  if (saved) return JSON.parse(saved);
+  return DEFAULT_CATEGORIES;
+};
+
+export const saveCategories = (categories: Category[]) => {
+  localStorage.setItem('sipro_categories', JSON.stringify(categories));
+};
+
+export const getInstrumentItems = (): InstrumentItem[] => {
+  const saved = localStorage.getItem('sipro_instruments');
+  return saved ? JSON.parse(saved) : DEFAULT_INSTRUMENT_ITEMS;
+};
+
+export const saveInstrumentItems = (items: InstrumentItem[]) => {
+  localStorage.setItem('sipro_instruments', JSON.stringify(items));
+};
+
+export const DUMMY_ADMIN: User = {
+  id: 'admin',
+  username: 'admin',
+  name: 'System Administrator',
+  role: 'admin',
+  schoolName: 'SMP Negeri 1 Telaga'
+};
+
+export const DUMMY_SUPERVISOR: User = {
+  id: 'pengawas',
+  username: 'pengawas',
+  name: 'Imran Tululi, S.Pd, M.Pd',
+  role: 'pengawas',
+  nip: '197101241992021001',
+  schoolName: 'SMP Negeri 1 Telaga'
+};
+
+export const DUMMY_HEADMASTER: User = {
+  id: 'kepsek',
+  username: 'kepsek',
+  name: 'Dra. Hj. Rosmin Katili, M.Pd',
+  role: 'kepsek',
+  nip: '196805141994032002',
+  schoolName: 'SMP Negeri 1 Telaga'
+};
+
 export const DUMMY_TEACHERS: User[] = [
   {
     id: '198808122015032001',
@@ -316,7 +377,14 @@ export const DUMMY_TEACHERS: User[] = [
     schoolName: 'SMP Negeri 1 Telaga',
     className: 'VIII-A',
     subject: 'Bahasa Inggris',
-    photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200'
+    photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
+    driveUrl: 'https://docs.google.com/document/d/1x2y3z/edit',
+    supervisionSchedule: 'Rabu, 15 Juli 2026 / 08:30 - 10:00',
+    moduleIdentity: {
+      topic: 'Narrative Text: Fables',
+      timeAllocation: '2 x 40 Menit',
+      targetPhase: 'Fase A'
+    }
   },
   {
     id: '199002152019031002',
@@ -327,7 +395,14 @@ export const DUMMY_TEACHERS: User[] = [
     schoolName: 'SMP Negeri 1 Telaga',
     className: 'IX-C',
     subject: 'Matematika',
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200'
+    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+    driveUrl: 'https://docs.google.com/document/d/4a5b6c/edit',
+    supervisionSchedule: 'Jumat, 17 Juli 2026 / 10:15 - 11:45',
+    moduleIdentity: {
+      topic: 'Persamaan Kuadrat',
+      timeAllocation: '2 x 40 Menit',
+      targetPhase: 'Fase A'
+    }
   },
   {
     id: '198504012010012005',
@@ -338,7 +413,14 @@ export const DUMMY_TEACHERS: User[] = [
     schoolName: 'SMP Negeri 1 Telaga',
     className: 'VII-B',
     subject: 'IPA Terpadu',
-    photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200'
+    photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
+    driveUrl: 'https://docs.google.com/document/d/7p8q9r/edit',
+    supervisionSchedule: 'Senin, 20 Juli 2026 / 07:30 - 09:00',
+    moduleIdentity: {
+      topic: 'Sistem Organisasi Kehidupan',
+      timeAllocation: '2 x 40 Menit',
+      targetPhase: 'Fase A'
+    }
   },
   {
     id: '199211052020121003',
@@ -349,7 +431,14 @@ export const DUMMY_TEACHERS: User[] = [
     schoolName: 'SMP Negeri 1 Telaga',
     className: 'IX-A',
     subject: 'Informatika',
-    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200'
+    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
+    driveUrl: 'https://docs.google.com/document/d/9x0y1z/edit',
+    supervisionSchedule: 'Kamis, 23 Juli 2026 / 13:00 - 14:30',
+    moduleIdentity: {
+      topic: 'Berpikir Komputasional',
+      timeAllocation: '2 x 40 Menit',
+      targetPhase: 'Fase A'
+    }
   }
 ];
 
@@ -373,7 +462,7 @@ export const initialSupervisions: Supervision[] = [
     teacherName: 'Endah Agustinawati, S.Pd',
     schoolName: 'SMP Negeri 1 Telaga',
     className: 'VIII-A',
-    phaseSemester: 'Fase D / Ganjil',
+    phaseSemester: 'Fase A / Ganjil',
     subject: 'Bahasa Inggris',
     date: '2026-06-10',
     scores: {
@@ -407,7 +496,7 @@ export const initialSupervisions: Supervision[] = [
     teacherName: 'Ahmad Subagio, S.Pd',
     schoolName: 'SMP Negeri 1 Telaga',
     className: 'IX-C',
-    phaseSemester: 'Fase D / Genap',
+    phaseSemester: 'Fase A / Genap',
     subject: 'Matematika',
     date: '2026-06-15',
     scores: {
@@ -438,7 +527,7 @@ export const initialSupervisions: Supervision[] = [
     teacherName: 'Siti Rahma, M.Pd',
     schoolName: 'SMP Negeri 1 Telaga',
     className: 'VII-B',
-    phaseSemester: 'Fase D / Ganjil',
+    phaseSemester: 'Fase A / Ganjil',
     subject: 'IPA Terpadu',
     date: '2026-07-02',
     scores: generateScores(3, 0), // Flat 3, sum 144

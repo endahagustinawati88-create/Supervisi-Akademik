@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { InstrumentItem, User, Supervision, PredicateType } from '../types';
-import { INSTRUMENT_ITEMS, DUMMY_TEACHERS } from '../data';
+import { getInstrumentItems, getCategories } from '../data';
+import { supabase } from '../lib/supabase';
 import { 
   ArrowLeft, Save, CheckCircle, Award, 
-  Calendar, BookOpen, Layers, Edit3, ClipboardList, PenTool, Check, AlertTriangle 
+  Calendar, BookOpen, Layers, Edit3, ClipboardList, PenTool, Check, AlertTriangle, Sparkles 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -16,20 +17,19 @@ interface SupervisionFormProps {
 
 const TABS = [
   { id: 'identity', label: '1. Identitas', icon: Calendar },
-  { id: 'pendahuluan', label: '2. Pendahuluan', icon: BookOpen },
-  { id: 'inti', label: '3. Kegiatan Inti', icon: Layers },
-  { id: 'penutup', label: '4. Penutup', icon: ClipboardList },
-  { id: 'summary', label: '5. Feedback & Tanda Tangan', icon: Edit3 },
+  { id: 'instruments', label: '2. Instrumen Observasi', icon: Layers },
+  { id: 'summary', label: '3. Feedback & Tanda Tangan', icon: Edit3 },
 ];
 
 export default function SupervisionForm({ supervision, onSave, onCancel, currentUser }: SupervisionFormProps) {
   const [activeTab, setActiveTab] = useState('identity');
+  const [teachers, setTeachers] = useState<User[]>([]);
   
   // Form Identitas State
   const [selectedTeacherId, setSelectedTeacherId] = useState('');
   const [schoolName, setSchoolName] = useState('SMP Negeri 1 Telaga');
   const [className, setClassName] = useState('');
-  const [phaseSemester, setPhaseSemester] = useState('Fase D / Ganjil');
+  const [phaseSemester, setPhaseSemester] = useState('Fase A / Ganjil');
   const [subject, setSubject] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   
@@ -41,6 +41,9 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
   // Feedback state
   const [generalFeedback, setGeneralFeedback] = useState('');
   const [followUp, setFollowUp] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [pengawasUser, setPengawasUser] = useState<User | null>(null);
+  const [kepsekUser, setKepsekUser] = useState<User | null>(null);
   
   // Signature placeholders state
   const [signedSupervisor, setSignedSupervisor] = useState(false);
@@ -48,7 +51,32 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
   const [signedHeadmaster, setSignedHeadmaster] = useState(false);
 
   // Active sub-sections for Kegiatan Inti (A-F)
-  const [activeIntiSection, setActiveIntiSection] = useState<'A' | 'B' | 'C' | 'D' | 'E' | 'F'>('A');
+  const allCategories = getCategories();
+  const allInstruments = getInstrumentItems();
+  const [activeCategory, setActiveCategory] = useState(allCategories[0]?.id);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const { data } = await supabase.from('users').select('*');
+      if (data) {
+        setTeachers(data.filter((d: any) => d.role === 'guru').map((d: any) => ({
+          id: d.id,
+          username: d.username,
+          name: d.name,
+          role: d.role,
+          nip: d.nip,
+          schoolName: d.school_name,
+          className: d.class_name,
+          subject: d.subject
+        })));
+        const pengawasData = data.find((d: any) => d.role === 'pengawas');
+        if (pengawasData) setPengawasUser({ name: pengawasData.name, nip: pengawasData.nip } as User);
+        const kepsekData = data.find((d: any) => d.role === 'kepsek');
+        if (kepsekData) setKepsekUser({ name: kepsekData.name, nip: kepsekData.nip } as User);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   useEffect(() => {
     if (supervision) {
@@ -68,7 +96,7 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
     } else {
       // Default initial scores (all empty or set default empty)
       const initial: Record<number, number> = {};
-      INSTRUMENT_ITEMS.forEach(item => {
+      getInstrumentItems().forEach(item => {
         initial[item.id] = 4; // prefill with 4 as standard default, or empty. Let's prefill with 4 to save time for admin, but allow changing
       });
       setScores(initial);
@@ -78,7 +106,7 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
   // Handle teacher change to auto-fill subject and class if available
   const handleTeacherChange = (id: string) => {
     setSelectedTeacherId(id);
-    const teacher = DUMMY_TEACHERS.find(t => t.id === id);
+    const teacher = teachers.find(t => t.id === id);
     if (teacher) {
       if (teacher.className) setClassName(teacher.className);
       if (teacher.subject) setSubject(teacher.subject);
@@ -86,10 +114,49 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
   };
 
   // Calculation Metrics
-  const answeredCount = INSTRUMENT_ITEMS.filter(item => scores[item.id] !== undefined && scores[item.id] > 0).length;
-  const totalScore = INSTRUMENT_ITEMS.reduce((sum, item) => sum + (scores[item.id] || 0), 0);
+  const answeredCount = getInstrumentItems().filter(item => scores[item.id] !== undefined && scores[item.id] > 0).length;
+  const totalScore = getInstrumentItems().reduce((sum, item) => sum + (scores[item.id] || 0), 0);
   const maxPossibleScore = 48 * 4; // 192
   const finalScore = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100 * 10) / 10 : 0;
+
+  const handleGenerateAI = async () => {
+    setIsGeneratingAI(true);
+    try {
+      const instruments = getInstrumentItems();
+      
+      const detailedScores = Object.entries(scores).map(([id, score]) => {
+        const item = instruments.find(i => i.id === Number(id));
+        return {
+          id,
+          kriteria: item ? item.text : 'Unknown',
+          skor: score,
+          catatan: itemNotes[Number(id)] || '-'
+        };
+      });
+
+      const response = await fetch('/api/generate-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          detailedScores,
+          totalScore
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.feedback) setGeneralFeedback(data.feedback);
+        if (data.followUp) setFollowUp(data.followUp);
+      } else {
+        alert('Gagal menghasilkan AI feedback. Pastikan API key valid.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Terjadi kesalahan koneksi saat memanggil AI.');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
 
   // Determine Predicate
   let predicate: PredicateType = 'Kurang';
@@ -126,7 +193,7 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
       return;
     }
 
-    const teacher = DUMMY_TEACHERS.find(t => t.id === selectedTeacherId);
+    const teacher = teachers.find(t => t.id === selectedTeacherId);
     const teacherName = teacher ? teacher.name : 'Guru Tamu';
 
     const payload: Supervision = {
@@ -145,10 +212,10 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
       predicate,
       generalFeedback,
       followUp,
-      supervisorName: 'Imran Tululi, S.Pd, M.Pd',
-      supervisorNip: '197101241992021001',
-      headmasterName: 'Dra. Hj. Rosmin Katili, M.Pd',
-      headmasterNip: '196805141994032002',
+      supervisorName: currentUser.role === 'pengawas' ? currentUser.name : (pengawasUser?.name || 'Pengawas'),
+      supervisorNip: currentUser.role === 'pengawas' ? (currentUser.nip || '-') : (pengawasUser?.nip || '-'),
+      headmasterName: kepsekUser?.name || 'Kepala Sekolah',
+      headmasterNip: kepsekUser?.nip || '-',
       status,
       createdAt: supervision?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -156,17 +223,6 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
 
     onSave(payload);
   };
-
-  // Group items by category for easy display
-  const pendahuluanItems = INSTRUMENT_ITEMS.filter(i => i.category === 'I_PENDAHULUAN');
-  const penutupItems = INSTRUMENT_ITEMS.filter(i => i.category === 'III_PENUTUP');
-  
-  const intiA_Items = INSTRUMENT_ITEMS.filter(i => i.category === 'II_A_MATERI');
-  const intiB_Items = INSTRUMENT_ITEMS.filter(i => i.category === 'II_B_STRATEGI');
-  const intiC_Items = INSTRUMENT_ITEMS.filter(i => i.category === 'II_C_MEDIA');
-  const intiD_Items = INSTRUMENT_ITEMS.filter(i => i.category === 'II_D_ABAD21');
-  const intiE_Items = INSTRUMENT_ITEMS.filter(i => i.category === 'II_E_KETERLIBATAN');
-  const intiF_Items = INSTRUMENT_ITEMS.filter(i => i.category === 'II_F_BAHASA');
 
   const scoreLabels: Record<number, string> = {
     4: 'Sesuai / Dilakukan & Efektif',
@@ -301,7 +357,7 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
                     className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer disabled:opacity-60"
                   >
                     <option value="">-- Pilih Guru --</option>
-                    {DUMMY_TEACHERS.map((teacher) => (
+                    {teachers.map((teacher) => (
                       <option key={teacher.id} value={teacher.id}>
                         {teacher.name} (NIP. {teacher.nip})
                       </option>
@@ -356,10 +412,12 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
                     onChange={(e) => setPhaseSemester(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 text-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
                   >
-                    <option value="Fase D / Ganjil">Fase D / Semester Ganjil</option>
-                    <option value="Fase D / Genap">Fase D / Semester Genap</option>
-                    <option value="Fase E / Ganjil">Fase E / Semester Ganjil</option>
-                    <option value="Fase E / Genap">Fase E / Semester Genap</option>
+                    <option value="Fase A / Ganjil">Fase A / Semester Ganjil</option>
+                    <option value="Fase A / Genap">Fase A / Semester Genap</option>
+                    <option value="Fase B / Ganjil">Fase B / Semester Ganjil</option>
+                    <option value="Fase B / Genap">Fase B / Semester Genap</option>
+                    <option value="Fase C / Ganjil">Fase C / Semester Ganjil</option>
+                    <option value="Fase C / Genap">Fase C / Semester Genap</option>
                   </select>
                 </div>
 
@@ -391,383 +449,108 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('pendahuluan')}
+                  onClick={() => setActiveTab('instruments')}
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
-                  Lanjut ke Pendahuluan →
+                  Lanjut ke Instrumen Observasi →
                 </button>
               </div>
             </motion.div>
           )}
 
-          {activeTab === 'pendahuluan' && (
+          {activeTab === 'instruments' && (
             <motion.div
-              key="pendahuluan"
+              key="instruments"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               className="space-y-4"
             >
-              <div className="bg-slate-800/80 border border-slate-700/40 rounded-2xl p-4">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-emerald-400" />
-                  I. Kegiatan Pendahuluan (Butir 1-8)
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Guru menyiapkan kesiapan belajar, melakukan apersepsi, menyampaikan tujuan, dan mengelola KSE.</p>
-              </div>
-
-              <div className="space-y-3.5">
-                {pendahuluanItems.map((item) => (
-                  <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                    <div className="flex items-start gap-2.5">
-                      <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">
-                        {item.id}
-                      </span>
-                      <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                    </div>
-
-                    {renderScoreButtons(item.id)}
-
-                    {/* Collapsible item-specific comment textfield */}
-                    <div className="pt-2">
-                      <input
-                        type="text"
-                        placeholder="Deskripsi / catatan khusus untuk butir ini (opsional)"
-                        value={itemNotes[item.id] || ''}
-                        onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                        className="w-full bg-slate-950/50 border border-slate-800 focus:border-slate-700 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none placeholder:text-slate-600"
-                      />
-                    </div>
-                  </div>
+              <div className="bg-slate-800 border border-slate-700/40 overflow-x-auto scrollbar-none flex gap-1 px-4 py-2 shrink-0 rounded-xl mb-4">
+                {allCategories.map((cat, idx) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${activeCategory === cat.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    {idx + 1}. {cat.label}
+                  </button>
                 ))}
               </div>
 
-              <div className="flex justify-between pt-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('identity')}
-                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
-                >
-                  ← Kembali
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('inti')}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  Lanjut ke Kegiatan Inti →
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'inti' && (
-            <motion.div
-              key="inti"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="space-y-4"
-            >
               <div className="bg-slate-800/80 border border-slate-700/40 rounded-2xl p-4">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-indigo-400" />
-                  II. Kegiatan Inti (Butir 9-42)
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Mengukur penguasaan materi, penerapan strategi mendidik, abad-21, diferensiasi dan KSE.</p>
-              </div>
-
-              {/* Sub-aspect selectors in Kegiatan Inti */}
-              <div className="flex flex-wrap gap-1 bg-slate-950/60 p-1 border border-slate-800 rounded-xl overflow-x-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveIntiSection('A')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${activeIntiSection === 'A' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-                >
-                  A. Materi (9-13)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveIntiSection('B')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${activeIntiSection === 'B' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-                >
-                  B. Strategi (14-23)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveIntiSection('C')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${activeIntiSection === 'C' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-                >
-                  C. Media (24-25)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveIntiSection('D')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${activeIntiSection === 'D' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-                >
-                  D. Abad 21 (26-31)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveIntiSection('E')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${activeIntiSection === 'E' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-                >
-                  E. Diferensiasi (32-39)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveIntiSection('F')}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold shrink-0 cursor-pointer ${activeIntiSection === 'F' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
-                >
-                  F. Bahasa (40-42)
-                </button>
-              </div>
-
-              {/* Render dynamic sub-sections of Kegiatan Inti */}
-              <div className="space-y-3">
-                {activeIntiSection === 'A' && (
-                  <div className="space-y-3.5">
-                    <div className="text-xs font-bold text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg">A. Guru menguasai materi yang diajarkan</div>
-                    {intiA_Items.map(item => (
-                      <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">{item.id}</span>
-                          <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                        </div>
-                        {renderScoreButtons(item.id)}
-                        <input
-                          type="text"
-                          placeholder="Catatan khusus (opsional)"
-                          value={itemNotes[item.id] || ''}
-                          onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                          className="w-full bg-slate-950/50 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeIntiSection === 'B' && (
-                  <div className="space-y-3.5">
-                    <div className="text-xs font-bold text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg">B. Guru menerapkan strategi pembelajaran yang mendidik</div>
-                    {intiB_Items.map(item => (
-                      <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">{item.id}</span>
-                          <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                        </div>
-                        {renderScoreButtons(item.id)}
-                        <input
-                          type="text"
-                          placeholder="Catatan khusus (opsional)"
-                          value={itemNotes[item.id] || ''}
-                          onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                          className="w-full bg-slate-950/50 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeIntiSection === 'C' && (
-                  <div className="space-y-3.5">
-                    <div className="text-xs font-bold text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg">C. Guru memanfaatkan sumber belajar / media dalam pembelajaran</div>
-                    {intiC_Items.map(item => (
-                      <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">{item.id}</span>
-                          <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                        </div>
-                        {renderScoreButtons(item.id)}
-                        <input
-                          type="text"
-                          placeholder="Catatan khusus (opsional)"
-                          value={itemNotes[item.id] || ''}
-                          onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                          className="w-full bg-slate-950/50 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeIntiSection === 'D' && (
-                  <div className="space-y-3.5">
-                    <div className="text-xs font-bold text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg">D. Implementasi Keterampilan Pembelajaran Abad 21</div>
-                    {intiD_Items.map(item => (
-                      <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">{item.id}</span>
-                          <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                        </div>
-                        {renderScoreButtons(item.id)}
-                        <input
-                          type="text"
-                          placeholder="Catatan khusus (opsional)"
-                          value={itemNotes[item.id] || ''}
-                          onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                          className="w-full bg-slate-950/50 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeIntiSection === 'E' && (
-                  <div className="space-y-3.5">
-                    <div className="text-xs font-bold text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg">E. Guru memicu dan/atau memelihara keterlibatan peserta didik (Diferensiasi)</div>
-                    {intiE_Items.map(item => (
-                      <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">{item.id}</span>
-                          <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                        </div>
-                        {renderScoreButtons(item.id)}
-                        <input
-                          type="text"
-                          placeholder="Catatan khusus (opsional)"
-                          value={itemNotes[item.id] || ''}
-                          onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                          className="w-full bg-slate-950/50 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeIntiSection === 'F' && (
-                  <div className="space-y-3.5">
-                    <div className="text-xs font-bold text-slate-300 bg-slate-800/40 px-3 py-1.5 rounded-lg">F. Guru menggunakan bahasa yang benar dan tepat dalam pembelajaran</div>
-                    {intiF_Items.map(item => (
-                      <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                        <div className="flex items-start gap-2.5">
-                          <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">{item.id}</span>
-                          <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                        </div>
-                        {renderScoreButtons(item.id)}
-                        <input
-                          type="text"
-                          placeholder="Catatan khusus (opsional)"
-                          value={itemNotes[item.id] || ''}
-                          onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                          className="w-full bg-slate-950/50 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Sub navigation controls for Inti sections */}
-              <div className="flex justify-between items-center py-2 bg-slate-950/30 p-3 rounded-xl border border-slate-800 mt-2">
-                <span className="text-[10px] text-slate-400 font-bold">Sub-Bagian Inti</span>
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    disabled={activeIntiSection === 'A'}
-                    onClick={() => {
-                      const order: ('A'|'B'|'C'|'D'|'E'|'F')[] = ['A', 'B', 'C', 'D', 'E', 'F'];
-                      const idx = order.indexOf(activeIntiSection);
-                      setActiveIntiSection(order[idx - 1]);
-                    }}
-                    className="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-xs disabled:opacity-40 cursor-pointer"
-                  >
-                    ← Back Section
-                  </button>
-                  <button
-                    type="button"
-                    disabled={activeIntiSection === 'F'}
-                    onClick={() => {
-                      const order: ('A'|'B'|'C'|'D'|'E'|'F')[] = ['A', 'B', 'C', 'D', 'E', 'F'];
-                      const idx = order.indexOf(activeIntiSection);
-                      setActiveIntiSection(order[idx + 1]);
-                    }}
-                    className="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-xs disabled:opacity-40 cursor-pointer"
-                  >
-                    Next Section →
-                  </button>
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-indigo-400" />
+                    {allCategories.find(c => c.id === activeCategory)?.label}
+                  </h2>
                 </div>
-              </div>
-
-              <div className="flex justify-between pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('pendahuluan')}
-                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
-                >
-                  ← Kembali
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('penutup')}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  Lanjut ke Penutup →
-                </button>
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'penutup' && (
-            <motion.div
-              key="penutup"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="space-y-4"
-            >
-              <div className="bg-slate-800/80 border border-slate-700/40 rounded-2xl p-4">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <ClipboardList className="w-5 h-5 text-emerald-400" />
-                  III. Kegiatan Penutup (Butir 43-48)
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Guru mengakhiri pembelajaran dengan kesimpulan, refleksi diri, tindak lanjut dan penutup.</p>
-              </div>
-
-              <div className="space-y-3.5">
-                {penutupItems.map((item) => (
-                  <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
-                    <div className="flex items-start gap-2.5">
-                      <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">
-                        {item.id}
-                      </span>
-                      <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
-                    </div>
-
-                    {renderScoreButtons(item.id)}
-
-                    <div className="pt-2">
+                <div className="space-y-3.5">
+                  {allInstruments.filter(i => i.category === activeCategory).map(item => (
+                    <div key={item.id} className="bg-slate-800/40 border border-slate-700/30 p-4 rounded-2xl space-y-2">
+                      <div className="flex items-start gap-2.5">
+                        <span className="text-xs font-bold bg-slate-900 border border-slate-700 text-slate-300 w-6 h-6 rounded-full flex items-center justify-center shrink-0">{item.id}</span>
+                        <p className="text-xs font-medium text-slate-200 leading-relaxed pt-0.5">{item.text}</p>
+                      </div>
+                      {renderScoreButtons(item.id)}
                       <input
                         type="text"
                         placeholder="Catatan khusus (opsional)"
                         value={itemNotes[item.id] || ''}
                         onChange={(e) => handleNoteChange(item.id, e.target.value)}
-                        className="w-full bg-slate-950/50 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500/50 mt-1"
                       />
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              <div className="flex justify-between pt-3">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('inti')}
-                  className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
-                >
-                  ← Kembali
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('summary')}
-                  className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 cursor-pointer"
-                >
-                  Feedback & Selesai →
-                </button>
+                <div className="flex justify-between items-center py-2 bg-slate-950/30 p-3 rounded-xl border border-slate-800 mt-4">
+                  <span className="text-[10px] text-slate-400 font-bold">Navigasi Kategori</span>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      disabled={allCategories.findIndex(c => c.id === activeCategory) === 0}
+                      onClick={() => {
+                        const idx = allCategories.findIndex(c => c.id === activeCategory);
+                        if (idx > 0) setActiveCategory(allCategories[idx - 1].id);
+                      }}
+                      className="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-xs disabled:opacity-40 cursor-pointer"
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
+                      disabled={allCategories.findIndex(c => c.id === activeCategory) === allCategories.length - 1}
+                      onClick={() => {
+                        const idx = allCategories.findIndex(c => c.id === activeCategory);
+                        if (idx < allCategories.length - 1) setActiveCategory(allCategories[idx + 1].id);
+                      }}
+                      className="px-2.5 py-1 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg text-xs disabled:opacity-40 cursor-pointer"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-4 border-t border-slate-800 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('identity')}
+                    className="text-slate-400 hover:text-white px-4 py-2 text-xs font-semibold cursor-pointer"
+                  >
+                    ← Kembali
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('summary')}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-lg shadow-indigo-500/20"
+                  >
+                    Lanjut ke Tanda Tangan →
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
-
           {activeTab === 'summary' && (
             <motion.div
               key="summary"
@@ -777,13 +560,32 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
               className="space-y-5"
             >
               <div className="bg-slate-800/80 border border-slate-700/40 rounded-2xl p-5 space-y-3">
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <Edit3 className="w-5 h-5 text-emerald-400" />
-                  Ulasan Umum, Rekomendasi & Tanda Tangan
-                </h2>
-                <p className="text-xs text-slate-300">
-                  Selesaikan pengisian instrumen dengan memberikan masukan dan rencana tindak lanjut pengembangan kompetensi guru.
-                </p>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-base font-bold text-white flex items-center gap-2">
+                      <Edit3 className="w-5 h-5 text-emerald-400" />
+                      Ulasan Umum, Rekomendasi & Tanda Tangan
+                    </h2>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Selesaikan pengisian instrumen dengan memberikan masukan dan rencana tindak lanjut pengembangan kompetensi guru.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateAI}
+                    disabled={isGeneratingAI || answeredCount === 0}
+                    className="flex items-center gap-2 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 hover:text-indigo-200 border border-indigo-500/30 px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  >
+                    {isGeneratingAI ? (
+                      <span className="animate-pulse">Menghasilkan...</span>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Buat Otomatis dengan AI
+                      </>
+                    )}
+                  </button>
+                </div>
                 
                 {answeredCount < 48 && (
                   <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2 text-xs text-amber-300">
@@ -924,7 +726,7 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
               <div className="flex justify-start">
                 <button
                   type="button"
-                  onClick={() => setActiveTab('penutup')}
+                  onClick={() => setActiveTab('instruments')}
                   className="text-xs font-semibold text-slate-400 hover:text-slate-200 cursor-pointer"
                 >
                   ← Kembali ke Kegiatan Penutup

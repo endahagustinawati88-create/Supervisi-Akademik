@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { User } from '../types';
-import { DUMMY_TEACHERS } from '../data';
-import { BookOpen, UserCheck, Shield, Key, FileText, AlertCircle } from 'lucide-react';
+import { BookOpen, UserCheck, Shield, Key, FileText, AlertCircle, Eye } from 'lucide-react';
 import { motion } from 'motion/react';
+import { supabase } from '../lib/supabase';
 
 interface LoginProps {
   onLoginSuccess: (user: User) => void;
@@ -12,69 +12,91 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
     const cleanUser = username.trim();
     const cleanPass = password.trim();
 
     if (!cleanUser || !cleanPass) {
       setError('Username/NIP dan password wajib diisi');
+      setIsLoading(false);
       return;
     }
 
-    // 1. Admin login validation
-    if (cleanUser.toLowerCase() === 'admin' && cleanPass === '1') {
-      const adminUser: User = {
-        id: 'admin',
-        username: 'admin',
-        name: 'Imran Tululi, S.Pd, M.Pd',
-        role: 'admin',
-        nip: '197101241992021001',
-        schoolName: 'SMP Negeri 1 Telaga'
+    try {
+      const { data, error: sbError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', cleanUser)
+        .single();
+
+      if (sbError || !data) {
+        setError('Pengguna tidak ditemukan di database.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Validasi password hardcode sesuai role (untuk prototype)
+      const role = data.role;
+      const isValidPassword = 
+        (role === 'guru' && cleanPass === '123') || 
+        (role !== 'guru' && cleanPass === '1');
+
+      if (!isValidPassword) {
+        setError('Password salah.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Transform DB row to User object
+      const loggedUser: User = {
+        id: data.id,
+        username: data.username,
+        name: data.name,
+        role: data.role,
+        nip: data.nip,
+        schoolName: data.school_name,
+        className: data.class_name,
+        subject: data.subject,
+        photoUrl: data.photo_url,
+        driveUrl: data.drive_url,
+        supervisionSchedule: data.supervision_schedule,
+        moduleIdentity: data.module_topic ? {
+          topic: data.module_topic,
+          timeAllocation: data.module_time_allocation,
+          targetPhase: data.module_target_phase
+        } : undefined
       };
-      onLoginSuccess(adminUser);
-      return;
-    }
 
-    // 2. Guru (Teacher) login validation
-    const teacher = DUMMY_TEACHERS.find(t => t.nip === cleanUser);
-    if (teacher && cleanPass === '123') {
-      onLoginSuccess(teacher);
-      return;
+      onLoginSuccess(loggedUser);
+    } catch (err) {
+      console.error(err);
+      setError('Terjadi kesalahan koneksi.');
+    } finally {
+      setIsLoading(false);
     }
-
-    // 3. Fallback for dynamic NIP creation if NIP pattern matches
-    const isNipPattern = /^\d{18}$/.test(cleanUser);
-    if (isNipPattern && cleanPass === '123') {
-      const dynamicTeacher: User = {
-        id: cleanUser,
-        username: cleanUser,
-        name: `Guru Tamu (${cleanUser.slice(-4)})`,
-        role: 'guru',
-        nip: cleanUser,
-        schoolName: 'SMP Negeri 1 Telaga',
-        className: 'VIII-B',
-        subject: 'Mata Pelajaran Umum'
-      };
-      onLoginSuccess(dynamicTeacher);
-      return;
-    }
-
-    setError('Kredensial tidak valid. Silakan gunakan username: admin & pass: 1, atau NIP & pass: 123');
   };
 
-  const quickLogin = (type: 'admin' | 'guru1' | 'guru2') => {
+  const quickLogin = (type: 'admin' | 'pengawas' | 'kepsek' | 'guru1' | 'guru2') => {
     if (type === 'admin') {
       setUsername('admin');
       setPassword('1');
+    } else if (type === 'pengawas') {
+      setUsername('pengawas');
+      setPassword('1');
+    } else if (type === 'kepsek') {
+      setUsername('kepsek');
+      setPassword('1');
     } else if (type === 'guru1') {
-      setUsername('198808122015032001'); // Endah Agustinawati
+      setUsername('198808122015032001'); // Pastikan NIP ini di-seed
       setPassword('123');
     } else if (type === 'guru2') {
-      setUsername('199002152019031002'); // Ahmad Subagio
+      setUsername('199002152019031002'); // Pastikan NIP ini di-seed
       setPassword('123');
     }
   };
@@ -128,7 +150,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </span>
               <input
                 type="text"
-                placeholder="Masukkan 'admin' atau NIP Anda"
+                placeholder="Masukkan 'admin', 'kepsek', atau NIP Anda"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-slate-900/60 text-white text-sm pl-10 pr-3 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all placeholder:text-slate-500"
@@ -177,16 +199,46 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           <button
             type="button"
             onClick={() => quickLogin('admin')}
-            className="w-full py-2 px-3 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-left flex items-center justify-between text-xs text-indigo-300 transition-all cursor-pointer"
+            className="w-full py-2 px-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 rounded-xl text-left flex items-center justify-between text-xs text-red-300 transition-all cursor-pointer"
           >
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-indigo-400" />
+              <Shield className="w-4 h-4 text-red-400" />
               <div>
-                <span className="font-semibold block text-indigo-200">Login sebagai Admin</span>
+                <span className="font-semibold block text-red-200">Login sebagai System Admin</span>
                 <span className="text-[10px] text-slate-400">User: admin | Pass: 1</span>
               </div>
             </div>
-            <span className="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300 font-bold uppercase">Admin</span>
+            <span className="text-[10px] bg-red-500/20 px-2 py-0.5 rounded text-red-300 font-bold uppercase">Admin</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => quickLogin('pengawas')}
+            className="w-full py-2 px-3 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-left flex items-center justify-between text-xs text-indigo-300 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-indigo-400" />
+              <div>
+                <span className="font-semibold block text-indigo-200">Login sebagai Pengawas</span>
+                <span className="text-[10px] text-slate-400">User: pengawas | Pass: 1</span>
+              </div>
+            </div>
+            <span className="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300 font-bold uppercase">Pengawas</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={() => quickLogin('kepsek')}
+            className="w-full py-2 px-3 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-500/50 rounded-xl text-left flex items-center justify-between text-xs text-purple-300 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-purple-400" />
+              <div>
+                <span className="font-semibold block text-purple-200">Login sebagai Kepala Sekolah</span>
+                <span className="text-[10px] text-slate-400">User: kepsek | Pass: 1</span>
+              </div>
+            </div>
+            <span className="text-[10px] bg-purple-500/20 px-2 py-0.5 rounded text-purple-300 font-bold uppercase">Kepsek</span>
           </button>
 
           <button

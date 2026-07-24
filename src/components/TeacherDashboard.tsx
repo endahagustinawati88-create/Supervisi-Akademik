@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Supervision, PredicateType } from '../types';
-import { INSTRUMENT_ITEMS } from '../data';
+import { getInstrumentItems, getCategories } from '../data';
 import { 
   Award, Calendar, BookOpen, Clock, ChevronRight, CheckCircle2,
   AlertCircle, MessageSquare, ListTodo, LogOut, Check, ChevronDown, UserCheck, HelpCircle
@@ -50,31 +50,27 @@ export default function TeacherDashboard({
   const latestSup = teacherSups[0] || null;
 
   // Aspect-by-aspect calculation for this teacher's latest supervision
-  const categories = [
-    { key: 'I_PENDAHULUAN', label: 'Pendahuluan', minId: 1, maxId: 8 },
-    { key: 'II_A_MATERI', label: 'Penguasaan Materi', minId: 9, maxId: 13 },
-    { key: 'II_B_STRATEGI', label: 'Strategi Mengajar', minId: 14, maxId: 23 },
-    { key: 'II_C_MEDIA', label: 'Media Belajar', minId: 24, maxId: 25 },
-    { key: 'II_D_ABAD21', label: 'Abad 21', minId: 26, maxId: 31 },
-    { key: 'II_E_KETERLIBATAN', label: 'Diferensiasi', minId: 32, maxId: 39 },
-    { key: 'II_F_BAHASA', label: 'Tata Bahasa', minId: 40, maxId: 42 },
-    { key: 'III_PENUTUP', label: 'Kegiatan Penutup', minId: 43, maxId: 48 },
-  ];
+  const allInstruments = getInstrumentItems();
+  const allCategories = getCategories();
+  
+  const categories = allCategories.map(cat => ({
+    key: cat.id,
+    label: cat.label.replace(/^[IVX]+\.?\s*/, ""),
+    itemIds: allInstruments.filter(i => i.category === cat.id).map(i => i.id)
+  }));
 
   const aspectRadarData = categories.map(cat => {
     let scoreSum = 0;
     let maxPossible = 0;
-
     if (latestSup) {
-      for (let i = cat.minId; i <= cat.maxId; i++) {
-        const score = latestSup.scores[i];
+      cat.itemIds.forEach(id => {
+        const score = latestSup.scores[id];
         if (score !== undefined) {
           scoreSum += score;
           maxPossible += 4;
         }
-      }
+      });
     }
-
     const percentage = maxPossible > 0 ? Math.round((scoreSum / maxPossible) * 100) : 0;
 
     return {
@@ -96,7 +92,7 @@ export default function TeacherDashboard({
 
   // Group instrument items by aspect for detail view
   const groupedItems = categories.map(cat => {
-    const items = INSTRUMENT_ITEMS.filter(i => i.id >= cat.minId && i.id <= cat.maxId);
+    const items = getInstrumentItems().filter(i => i.id >= cat.minId && i.id <= cat.maxId);
     return {
       ...cat,
       items
@@ -133,12 +129,12 @@ export default function TeacherDashboard({
         
         {/* Welcome message / profile panel */}
         <section className="bg-gradient-to-r from-emerald-500/10 to-indigo-500/10 border border-slate-800 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="space-y-1 w-full">
             <h1 className="text-base font-extrabold text-white">Selamat Datang, {currentUser.name}!</h1>
             <p className="text-xs text-slate-300 leading-relaxed">
               Pantau perkembangan kualitas proses belajar mengajar Anda di kelas <b>{currentUser.className || 'VIII-A'}</b> secara langsung dan penuhi rekomendasi perbaikan dari Pengawas Pendamping.
             </p>
-            <div className="flex items-center gap-1.5 pt-2">
+            <div className="flex flex-wrap items-center gap-1.5 pt-2 mb-3">
               <span className="text-[10px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold px-2.5 py-0.5 rounded-full">
                 NIP. {currentUser.nip}
               </span>
@@ -146,6 +142,52 @@ export default function TeacherDashboard({
                 Mapel: {currentUser.subject}
               </span>
             </div>
+
+            {/* Teacher Details from Data */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 border-t border-slate-700/50 pt-4">
+              <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800/80">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Informasi Pra-Observasi</span>
+                <div className="space-y-2 mt-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Jadwal Supervisi:</span>
+                    <span className="text-slate-200 font-medium">{currentUser.supervisionSchedule || 'Belum dijadwalkan'}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-400">Link Modul Ajar / RPP:</span>
+                    {currentUser.driveUrl ? (
+                      <a href={currentUser.driveUrl} target="_blank" rel="noreferrer" className="text-emerald-400 font-medium hover:underline flex items-center gap-1">
+                        Buka G-Drive <ChevronRight className="w-3 h-3" />
+                      </a>
+                    ) : (
+                      <span className="text-slate-500 italic">Belum ditautkan</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900/40 p-3 rounded-xl border border-slate-800/80">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Identitas Modul Ajar</span>
+                {currentUser.moduleIdentity ? (
+                  <div className="space-y-2 mt-2">
+                    <div className="flex justify-between items-start text-xs">
+                      <span className="text-slate-400">Materi Pokok:</span>
+                      <span className="text-slate-200 font-medium text-right max-w-[150px]">{currentUser.moduleIdentity.topic}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Alokasi Waktu:</span>
+                      <span className="text-slate-200 font-medium">{currentUser.moduleIdentity.timeAllocation}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400">Fase Sasaran:</span>
+                      <span className="text-slate-200 font-medium">{currentUser.moduleIdentity.targetPhase}</span>
+                    </div>
+                  </div>
+                ) : (
+                   <span className="text-xs text-slate-500 italic block mt-2">Identitas modul belum diisi.</span>
+                )}
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -263,7 +305,7 @@ export default function TeacherDashboard({
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {Object.entries(latestSup.notes).map(([id, note]) => {
-                      const item = INSTRUMENT_ITEMS.find(i => i.id === Number(id));
+                      const item = getInstrumentItems().find(i => i.id === Number(id));
                       return (
                         <div key={id} className="bg-slate-950/40 border border-slate-800 p-3 rounded-xl space-y-1">
                           <span className="text-[9px] font-bold text-indigo-400 uppercase">Butir {id}: {item?.text.slice(0, 45)}...</span>

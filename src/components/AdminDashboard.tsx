@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Supervision, PredicateType, SupervisionCategory } from '../types';
-import { INSTRUMENT_ITEMS, DUMMY_TEACHERS } from '../data';
+import { getInstrumentItems, getCategories } from '../data';
+import { supabase } from '../lib/supabase';
 import { 
   Users, Award, Calendar, BookOpen, Search, Filter, 
   Plus, ArrowUpRight, BarChart3, Clock, Trash2, Edit2, Eye, UserPlus, X, LogOut 
@@ -32,51 +33,44 @@ export default function AdminDashboard({
   const [selectedPredicate, setSelectedPredicate] = useState<string>('All');
   const [viewingDetailSupervision, setViewingDetailSupervision] = useState<Supervision | null>(null);
   
-  // Quick dynamic teacher addition state
-  const [showAddTeacherModal, setShowAddTeacherModal] = useState(false);
-  const [newTeacherName, setNewTeacherName] = useState('');
-  const [newTeacherNip, setNewTeacherNip] = useState('');
-  const [newTeacherClass, setNewTeacherClass] = useState('');
-  const [newTeacherSubject, setNewTeacherSubject] = useState('');
-  const [localTeachers, setLocalTeachers] = useState<User[]>(() => {
-    const saved = localStorage.getItem('sipro_teachers');
-    return saved ? JSON.parse(saved) : DUMMY_TEACHERS;
-  });
+  const [localTeachers, setLocalTeachers] = useState<User[]>([]);
+  const [isLoadingTeachers, setIsLoadingTeachers] = useState(true);
 
-  const handleAddTeacher = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTeacherName || !newTeacherNip || !newTeacherClass || !newTeacherSubject) {
-      alert('Semua kolom wajib diisi!');
-      return;
-    }
-    if (!/^\d{18}$/.test(newTeacherNip)) {
-      alert('NIP harus berupa 18 digit angka!');
-      return;
-    }
-
-    const newTeacher: User = {
-      id: newTeacherNip,
-      username: newTeacherNip,
-      name: newTeacherName,
-      role: 'guru',
-      nip: newTeacherNip,
-      schoolName: 'SMP Negeri 1 Telaga',
-      className: newTeacherClass,
-      subject: newTeacherSubject,
-      photoUrl: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200`
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      setIsLoadingTeachers(true);
+      try {
+        const { data, error } = await supabase.from('users').select('*').eq('role', 'guru');
+        if (error) throw error;
+        if (data) {
+          const mappedTeachers: User[] = data.map((d: any) => ({
+            id: d.id,
+            username: d.username,
+            name: d.name,
+            role: d.role,
+            nip: d.nip,
+            schoolName: d.school_name,
+            className: d.class_name,
+            subject: d.subject,
+            photoUrl: d.photo_url,
+            driveUrl: d.drive_url,
+            supervisionSchedule: d.supervision_schedule,
+            moduleIdentity: d.module_topic ? {
+              topic: d.module_topic,
+              timeAllocation: d.module_time_allocation,
+              targetPhase: d.module_target_phase
+            } : undefined
+          }));
+          setLocalTeachers(mappedTeachers);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoadingTeachers(false);
+      }
     };
-
-    const updated = [...localTeachers, newTeacher];
-    setLocalTeachers(updated);
-    localStorage.setItem('sipro_teachers', JSON.stringify(updated));
-
-    // Reset Form
-    setNewTeacherName('');
-    setNewTeacherNip('');
-    setNewTeacherClass('');
-    setNewTeacherSubject('');
-    setShowAddTeacherModal(false);
-  };
+    fetchTeachers();
+  }, []);
 
   // Calculate dynamic teacher statistics based on localTeachers + supervisions
   const teacherStats = localTeachers.map(teacher => {
@@ -97,6 +91,7 @@ export default function AdminDashboard({
     };
   });
 
+
   // KPI calculations
   const totalTeachers = localTeachers.length;
   const activeSupervisions = supervisions.filter(s => s.status === 'Submitted');
@@ -106,16 +101,14 @@ export default function AdminDashboard({
     : 0;
 
   // Aspect averages calculation for school analytics
-  const categories = [
-    { key: 'I_PENDAHULUAN', label: 'Pendahuluan', itemIds: Array.from({ length: 8 }, (_, i) => i + 1) },
-    { key: 'II_A_MATERI', label: 'Penguasaan Materi', itemIds: Array.from({ length: 5 }, (_, i) => i + 9) },
-    { key: 'II_B_STRATEGI', label: 'Strategi Mengajar', itemIds: Array.from({ length: 10 }, (_, i) => i + 14) },
-    { key: 'II_C_MEDIA', label: 'Pemanfaatan Media', itemIds: Array.from({ length: 2 }, (_, i) => i + 24) },
-    { key: 'II_D_ABAD21', label: 'Abad 21', itemIds: Array.from({ length: 6 }, (_, i) => i + 26) },
-    { key: 'II_E_KETERLIBATAN', label: 'Keterlibatan & Diferensiasi', itemIds: Array.from({ length: 8 }, (_, i) => i + 32) },
-    { key: 'II_F_BAHASA', label: 'Tata Bahasa', itemIds: Array.from({ length: 3 }, (_, i) => i + 40) },
-    { key: 'III_PENUTUP', label: 'Kegiatan Penutup', itemIds: Array.from({ length: 6 }, (_, i) => i + 43) },
-  ];
+  const allInstruments = getInstrumentItems();
+  const allCategories = getCategories();
+  
+  const categories = allCategories.map(cat => ({
+    key: cat.id,
+    label: cat.label.replace(/^[IVX]+\.?\s*/, ''), // Remove I., II.A., etc.
+    itemIds: allInstruments.filter(i => i.category === cat.id).map(i => i.id)
+  }));
 
   const aspectAveragesData = categories.map(cat => {
     let totalScoreInAspect = 0;
@@ -174,7 +167,9 @@ export default function AdminDashboard({
             A
           </div>
           <div>
-            <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dashboard Pengawas</span>
+            <span className="block text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              {currentUser.role === 'admin' ? 'Dashboard Pengawas' : 'Dashboard Kepala Sekolah'}
+            </span>
             <span className="text-sm font-extrabold text-white">{currentUser.name}</span>
           </div>
         </div>
@@ -207,9 +202,6 @@ export default function AdminDashboard({
             <div className="flex items-baseline gap-2.5 mt-2">
               <span className="text-3xl font-black text-white">{totalTeachers}</span>
               <span className="text-[10px] text-slate-400 font-medium">Orang Aktif</span>
-            </div>
-            <div className="flex items-center gap-1 text-[10px] text-indigo-400 mt-2 font-bold cursor-pointer hover:underline" onClick={() => setShowAddTeacherModal(true)}>
-              <UserPlus className="w-3.5 h-3.5" /> Tambah Akun Guru
             </div>
           </div>
 
@@ -575,7 +567,7 @@ export default function AdminDashboard({
                   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Komentar & Catatan Butir Unggulan:</h4>
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                     {Object.entries(viewingDetailSupervision.notes).map(([id, text]) => {
-                      const item = INSTRUMENT_ITEMS.find(i => i.id === Number(id));
+                      const item = getInstrumentItems().find(i => i.id === Number(id));
                       return (
                         <div key={id} className="bg-slate-950/40 border-l-2 border-emerald-500 p-2 rounded-r-lg">
                           <span className="block text-[9px] text-emerald-400 font-bold">Butir {id}: {item?.text.slice(0, 50)}...</span>
@@ -627,23 +619,59 @@ export default function AdminDashboard({
                   onClick={() => {
                     const printUrl = window.open('', '_blank');
                     if (printUrl) {
+                      const allInstruments = getInstrumentItems();
+                      let currentCategory = '';
+                      
+                      const tableRows = allInstruments.map(item => {
+                        const score = viewingDetailSupervision.scores[item.id] || 0;
+                        const note = viewingDetailSupervision.notes[item.id] || '-';
+                        let categoryHeader = '';
+                        
+                        if (item.category !== currentCategory) {
+                          currentCategory = item.category;
+                          categoryHeader = `
+                            <tr class="category-row">
+                              <td colspan="4">${item.categoryLabel}</td>
+                            </tr>
+                          `;
+                        }
+
+                        // Only show answered items? Or all items? The requirement says "hasil cetak pdf disajikan dengan Instrumen, catatan dan skor hasil observasi". Show all is usually best for a form, but let's show all items since it's an evaluation form. Or maybe just the ones with scores. Let's show all.
+                        return `
+                          ${categoryHeader}
+                          <tr>
+                            <td style="text-align: center;">${item.id}</td>
+                            <td>${item.text}</td>
+                            <td style="text-align: center; font-weight: bold;">${score > 0 ? score : '-'}</td>
+                            <td>${note}</td>
+                          </tr>
+                        `;
+                      }).join('');
+
                       printUrl.document.write(`
                         <html>
                           <head>
                             <title>Cetak Hasil Supervisi - ${viewingDetailSupervision.teacherName}</title>
                             <style>
-                              body { font-family: sans-serif; padding: 40px; color: #111; line-height: 1.5; }
-                              .header { text-align: center; margin-bottom: 30px; border-bottom: 3px double #000; padding-bottom: 10px; }
-                              .title { font-size: 18px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
-                              .grid { display: grid; grid-template-cols: 150px 1fr; margin-bottom: 20px; gap: 5px; }
+                              body { font-family: sans-serif; padding: 20px 40px; color: #111; line-height: 1.5; font-size: 12px; }
+                              .header { text-align: center; margin-bottom: 20px; border-bottom: 3px double #000; padding-bottom: 10px; }
+                              .title { font-size: 16px; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; }
+                              .grid { display: grid; grid-template-columns: 150px 1fr; margin-bottom: 20px; gap: 5px; font-size: 13px; }
                               .label { font-weight: bold; }
-                              .score-box { background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #ccc; }
+                              .score-box { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #ccc; page-break-inside: avoid; }
                               .score-large { font-size: 24px; font-weight: bold; color: #2e7d32; }
-                              .section-title { font-size: 14px; font-weight: bold; border-bottom: 1px solid #aaa; margin-top: 20px; padding-bottom: 4px; text-transform: uppercase; }
-                              .notes-list { margin-left: 20px; margin-top: 10px; }
-                              .signatures { display: flex; justify-content: space-between; margin-top: 50px; }
+                              .section-title { font-size: 14px; font-weight: bold; border-bottom: 1px solid #aaa; margin-top: 20px; padding-bottom: 4px; text-transform: uppercase; page-break-after: avoid; }
+                              .signatures { display: flex; justify-content: space-between; margin-top: 50px; page-break-inside: avoid; }
                               .sig-col { text-align: center; width: 200px; }
                               .sig-line { border-bottom: 1px solid #000; margin-top: 50px; font-weight: bold; }
+                              table { width: 100%; border-collapse: collapse; margin-bottom: 20px; margin-top: 10px; font-size: 11px; }
+                              th, td { border: 1px solid #000; padding: 6px 8px; }
+                              th { background-color: #eee; font-weight: bold; text-align: center; }
+                              .category-row { background-color: #e0e0e0; font-weight: bold; font-size: 12px; }
+                              p { margin: 5px 0 15px 0; }
+                              @media print {
+                                body { padding: 0; }
+                              }
                             </style>
                           </head>
                           <body>
@@ -659,6 +687,20 @@ export default function AdminDashboard({
                               <div class="label">Kelas/Fase/Semester:</div><div>${viewingDetailSupervision.className} / ${viewingDetailSupervision.phaseSemester}</div>
                               <div class="label">Hari / Tanggal:</div><div>${viewingDetailSupervision.date}</div>
                             </div>
+
+                            <table>
+                              <thead>
+                                <tr>
+                                  <th style="width: 30px;">No</th>
+                                  <th>Aspek yang Diamati</th>
+                                  <th style="width: 50px;">Skor (1-4)</th>
+                                  <th style="width: 25%;">Catatan</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                ${tableRows}
+                              </tbody>
+                            </table>
 
                             <div class="score-box">
                               <div>NILAI AKHIR OBSERVASI</div>
@@ -709,101 +751,6 @@ export default function AdminDashboard({
                   Tutup
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Add New Teacher Modal popup */}
-      <AnimatePresence>
-        {showAddTeacherModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.95 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.95 }}
-              className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-850">
-                <h3 className="font-extrabold text-white text-sm">Tambah Akun Guru Baru</h3>
-                <button onClick={() => setShowAddTeacherModal(false)} className="p-1 text-slate-400 hover:text-white cursor-pointer">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleAddTeacher} className="p-5 space-y-4 text-xs">
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">Nama Lengkap & Gelar</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Contoh: Endah Agustinawati, S.Pd"
-                    value={newTeacherName}
-                    onChange={(e) => setNewTeacherName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-slate-700"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-300 mb-1">NIP (18 Digit untuk Login)</label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={18}
-                    placeholder="Contoh: 198808122015032001"
-                    value={newTeacherNip}
-                    onChange={(e) => setNewTeacherNip(e.target.value.replace(/\D/g, ''))}
-                    className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-slate-700"
-                  />
-                  <span className="text-[9px] text-slate-500 mt-0.5 block">Password default login guru: 123</span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Rombel / Kelas</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="VIII-A"
-                      value={newTeacherClass}
-                      onChange={(e) => setNewTeacherClass(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-slate-700"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-semibold text-slate-300 mb-1">Mata Pelajaran</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Bahasa Inggris"
-                      value={newTeacherSubject}
-                      onChange={(e) => setNewTeacherSubject(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-slate-700"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddTeacherModal(false)}
-                    className="flex-1 py-2 bg-slate-800 hover:bg-slate-750 rounded-xl text-slate-300 font-bold text-center cursor-pointer"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold rounded-xl text-center cursor-pointer"
-                  >
-                    Simpan Akun
-                  </button>
-                </div>
-              </form>
             </motion.div>
           </motion.div>
         )}
