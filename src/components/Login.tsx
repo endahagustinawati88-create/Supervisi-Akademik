@@ -168,11 +168,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
 
         {/* Footer info */}
-        <div className="mt-8 text-center text-[10px] text-slate-500">
-          SIPRO-BELAJAR SMP Negeri 1 Telaga &copy; 2026.
-          <br />
-          Pengawas Pendamping: Imran Tululi, S.Pd, M.Pd
-        </div>
+        
       </motion.div>
     </div>
   );
