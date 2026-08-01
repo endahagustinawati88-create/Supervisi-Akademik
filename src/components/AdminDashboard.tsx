@@ -3,14 +3,16 @@ import { User, Supervision, PredicateType, SupervisionCategory } from '../types'
 import { getInstrumentItems, getCategories } from '../data';
 import { supabase } from '../lib/supabase';
 import { 
-  Users, Award, Calendar, BookOpen, Search, Filter, 
-  Plus, ArrowUpRight, BarChart3, Clock, Trash2, Edit2, Eye, UserPlus, X, LogOut 
+  Users, Award, Calendar, BookOpen, Search, Filter, ClipboardList, 
+  Plus, ArrowUpRight, BarChart3, Clock, Trash2, Edit2, Eye, UserPlus, X, LogOut, Download 
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
   Tooltip, CartesianGrid, Legend, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
+import { generateSupervisionPDF } from '../lib/pdfGenerator';
+import InstrumentViewer from './InstrumentViewer';
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -32,6 +34,7 @@ export default function AdminDashboard({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPredicate, setSelectedPredicate] = useState<string>('All');
   const [viewingDetailSupervision, setViewingDetailSupervision] = useState<Supervision | null>(null);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'instruments'>('dashboard');
   
   const [localTeachers, setLocalTeachers] = useState<User[]>([]);
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(true);
@@ -175,6 +178,16 @@ export default function AdminDashboard({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab(activeTab === 'dashboard' ? 'instruments' : 'dashboard')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all h-9 cursor-pointer ${
+              activeTab === 'instruments' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700/60'
+            }`}
+          >
+            <ClipboardList className="w-4 h-4" />
+            <span className="hidden xs:inline">{activeTab === 'dashboard' ? 'Indikator Penilaian' : 'Kembali ke Dashboard'}</span>
+          </button>
+
           <button 
             onClick={() => onStartNewSupervision()}
             className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl flex items-center gap-1 shadow-lg shadow-emerald-500/15 cursor-pointer h-9"
@@ -194,6 +207,10 @@ export default function AdminDashboard({
       </header>
 
       <main className="max-w-6xl mx-auto px-4 pt-6 space-y-6">
+        {activeTab === 'instruments' ? (
+          <InstrumentViewer currentUser={currentUser} />
+        ) : (
+          <>
         
         {/* Real-time stats widgets */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
@@ -467,6 +484,13 @@ export default function AdminDashboard({
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         <button
+                          onClick={() => generateSupervisionPDF(sup)}
+                          className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/30 rounded-lg text-emerald-400 cursor-pointer inline-flex items-center"
+                          title="Download PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                        <button
                           onClick={() => onEditSupervision(sup)}
                           className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 cursor-pointer inline-flex items-center"
                           title="Edit"
@@ -491,6 +515,8 @@ export default function AdminDashboard({
               </table>
             </div>
           </section>
+        )}
+          </>
         )}
       </main>
 

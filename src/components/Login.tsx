@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../types';
-import { BookOpen, UserCheck, Shield, Key, FileText, AlertCircle, Eye } from 'lucide-react';
+import { BookOpen, UserCheck, Key, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { supabase } from '../lib/supabase';
 
@@ -82,24 +82,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
   };
 
-  const quickLogin = (type: 'admin' | 'pengawas' | 'kepsek' | 'guru1' | 'guru2') => {
-    if (type === 'admin') {
-      setUsername('admin');
-      setPassword('1');
-    } else if (type === 'pengawas') {
-      setUsername('pengawas');
-      setPassword('1');
-    } else if (type === 'kepsek') {
-      setUsername('kepsek');
-      setPassword('1');
-    } else if (type === 'guru1') {
-      setUsername('198808122015032001'); // Pastikan NIP ini di-seed
-      setPassword('123');
-    } else if (type === 'guru2') {
-      setUsername('199002152019031002'); // Pastikan NIP ini di-seed
-      setPassword('123');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col justify-center items-center p-4 relative overflow-hidden font-sans">
@@ -184,93 +166,6 @@ export default function Login({ onLoginSuccess }: LoginProps) {
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-700/60"></div>
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="px-3 bg-slate-800 text-slate-400">Uji Coba Cepat (Dummy)</span>
-          </div>
-        </div>
-
-        {/* Quick Demo Access Buttons */}
-        <div className="grid grid-cols-1 gap-2.5">
-          <button
-            type="button"
-            onClick={() => quickLogin('admin')}
-            className="w-full py-2 px-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 rounded-xl text-left flex items-center justify-between text-xs text-red-300 transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-red-400" />
-              <div>
-                <span className="font-semibold block text-red-200">Login sebagai System Admin</span>
-                <span className="text-[10px] text-slate-400">User: admin | Pass: 1</span>
-              </div>
-            </div>
-            <span className="text-[10px] bg-red-500/20 px-2 py-0.5 rounded text-red-300 font-bold uppercase">Admin</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => quickLogin('pengawas')}
-            className="w-full py-2 px-3 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 hover:border-indigo-500/50 rounded-xl text-left flex items-center justify-between text-xs text-indigo-300 transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-indigo-400" />
-              <div>
-                <span className="font-semibold block text-indigo-200">Login sebagai Pengawas</span>
-                <span className="text-[10px] text-slate-400">User: pengawas | Pass: 1</span>
-              </div>
-            </div>
-            <span className="text-[10px] bg-indigo-500/20 px-2 py-0.5 rounded text-indigo-300 font-bold uppercase">Pengawas</span>
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => quickLogin('kepsek')}
-            className="w-full py-2 px-3 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 hover:border-purple-500/50 rounded-xl text-left flex items-center justify-between text-xs text-purple-300 transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-purple-400" />
-              <div>
-                <span className="font-semibold block text-purple-200">Login sebagai Kepala Sekolah</span>
-                <span className="text-[10px] text-slate-400">User: kepsek | Pass: 1</span>
-              </div>
-            </div>
-            <span className="text-[10px] bg-purple-500/20 px-2 py-0.5 rounded text-purple-300 font-bold uppercase">Kepsek</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => quickLogin('guru1')}
-            className="w-full py-2 px-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl text-left flex items-center justify-between text-xs text-emerald-300 transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-400" />
-              <div>
-                <span className="font-semibold block text-emerald-200">Endah Agustinawati, S.Pd</span>
-                <span className="text-[10px] text-slate-400">NIP: 1988...2001 | Pass: 123</span>
-              </div>
-            </div>
-            <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded text-emerald-300 font-bold uppercase">Guru</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => quickLogin('guru2')}
-            className="w-full py-2 px-3 bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/30 hover:border-teal-500/50 rounded-xl text-left flex items-center justify-between text-xs text-teal-300 transition-all cursor-pointer"
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-teal-400" />
-              <div>
-                <span className="font-semibold block text-teal-200">Ahmad Subagio, S.Pd</span>
-                <span className="text-[10px] text-slate-400">NIP: 1990...1002 | Pass: 123</span>
-              </div>
-            </div>
-            <span className="text-[10px] bg-teal-500/20 px-2 py-0.5 rounded text-teal-300 font-bold uppercase">Guru</span>
-          </button>
-        </div>
 
         {/* Footer info */}
         <div className="mt-8 text-center text-[10px] text-slate-500">

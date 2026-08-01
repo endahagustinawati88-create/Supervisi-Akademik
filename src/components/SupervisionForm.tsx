@@ -3,7 +3,7 @@ import { InstrumentItem, User, Supervision, PredicateType } from '../types';
 import { getInstrumentItems, getCategories } from '../data';
 import { supabase } from '../lib/supabase';
 import { 
-  ArrowLeft, Save, CheckCircle, Award, 
+  ArrowLeft, Save, CheckCircle, CheckCircle2, Award, 
   Calendar, BookOpen, Layers, Edit3, ClipboardList, PenTool, Check, AlertTriangle, Sparkles 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';

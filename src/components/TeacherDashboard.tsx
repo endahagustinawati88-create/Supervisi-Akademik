@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { User, Supervision, PredicateType } from '../types';
 import { getInstrumentItems, getCategories } from '../data';
+import { generateSupervisionPDF } from '../lib/pdfGenerator';
+import InstrumentViewer from './InstrumentViewer';
 import { 
   Award, Calendar, BookOpen, Clock, ChevronRight, CheckCircle2,
-  AlertCircle, MessageSquare, ListTodo, LogOut, Check, ChevronDown, UserCheck, HelpCircle
+  AlertCircle, MessageSquare, ListTodo, LogOut, Check, ChevronDown, UserCheck, HelpCircle, Download, ClipboardList
 } from 'lucide-react';
 import { 
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip
@@ -21,7 +23,7 @@ export default function TeacherDashboard({
   supervisions,
   onLogout
 }: TeacherDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'items' | 'reflection'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'items' | 'reflection' | 'instruments'>('overview');
   const [reflectionText, setReflectionText] = useState('');
   const [reflectionSaved, setReflectionSaved] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>('I_PENDAHULUAN');
@@ -92,7 +94,7 @@ export default function TeacherDashboard({
 
   // Group instrument items by aspect for detail view
   const groupedItems = categories.map(cat => {
-    const items = getInstrumentItems().filter(i => i.id >= cat.minId && i.id <= cat.maxId);
+    const items = getInstrumentItems().filter(i => i.category === cat.key);
     return {
       ...cat,
       items
@@ -223,6 +225,17 @@ export default function TeacherDashboard({
           >
             Lembar Refleksi Diri
           </button>
+          <button
+            onClick={() => setActiveTab('instruments')}
+            className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'instruments' 
+                 ? 'border-emerald-500 text-emerald-400' 
+                 : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <ClipboardList className="w-3.5 h-3.5" />
+            Dashbor Indikator
+          </button>
         </div>
 
         {/* Tab 1: Overview */}
@@ -233,7 +246,17 @@ export default function TeacherDashboard({
                 {/* Score Widget */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="bg-slate-900/50 border border-slate-800/80 p-4 rounded-2xl flex flex-col justify-between sm:col-span-2">
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hasil Observasi Terakhir</span>
+                    <div className="flex justify-between items-start">
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Hasil Observasi Terakhir</span>
+                      <button
+                        onClick={() => generateSupervisionPDF(latestSup)}
+                        className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/30 rounded-lg text-emerald-400 cursor-pointer inline-flex items-center gap-1.5"
+                        title="Download PDF"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold pr-1">Unduh Laporan</span>
+                      </button>
+                    </div>
                     <div className="flex items-baseline gap-2.5 mt-2">
                       <span className="text-4xl font-black text-emerald-400">{latestSup.finalScore}%</span>
                       <span className="text-xs text-slate-400 font-medium">({latestSup.totalScore} dari 192 skor maksimal)</span>
@@ -338,6 +361,13 @@ export default function TeacherDashboard({
                             <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${getPredicateBadgeColor(sup.predicate)}`}>
                               {sup.predicate}
                             </span>
+                            <button
+                              onClick={() => generateSupervisionPDF(sup)}
+                              className="p-1.5 ml-1 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/30 rounded-lg text-emerald-400 cursor-pointer inline-flex items-center"
+                              title="Download PDF"
+                            >
+                              <Download className="w-3 h-3" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -467,6 +497,10 @@ export default function TeacherDashboard({
           </div>
         )}
 
+        {activeTab === 'instruments' && (
+          <InstrumentViewer currentUser={currentUser} />
+        )}
+        
         {/* Tab 3: Self-reflection form */}
         {activeTab === 'reflection' && (
           <div className="space-y-4">
