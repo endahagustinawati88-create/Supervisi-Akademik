@@ -359,8 +359,8 @@ export const DUMMY_SUPERVISOR: User = {
 };
 
 export const DUMMY_HEADMASTER: User = {
-  id: 'kepsek',
-  username: 'kepsek',
+  id: '196805141994032002',
+  username: '196805141994032002',
   name: 'Dra. Hj. Rosmin Katili, M.Pd',
   role: 'kepsek',
   nip: '196805141994032002',

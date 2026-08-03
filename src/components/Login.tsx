@@ -44,8 +44,9 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       // Validasi password hardcode sesuai role (untuk prototype)
       const role = data.role;
       const isValidPassword = 
+        (role === 'kepsek' && cleanPass === '12345') ||
         (role === 'guru' && cleanPass === '123') || 
-        (role !== 'guru' && cleanPass === '1');
+        (role !== 'guru' && role !== 'kepsek' && cleanPass === '1');
 
       if (!isValidPassword) {
         setError('Password salah.');
@@ -132,7 +133,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
               </span>
               <input
                 type="text"
-                placeholder="Masukkan 'admin', 'kepsek', atau NIP Anda"
+                placeholder="Masukkan 'admin', 'pengawas', atau NIP Anda"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full bg-slate-900/60 text-white text-sm pl-10 pr-3 py-2.5 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 transition-all placeholder:text-slate-500"

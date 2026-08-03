@@ -210,8 +210,8 @@ export default function SystemAdminDashboard({ currentUser, onLogout }: Props) {
     if (!newSupervisor.name || !newSupervisor.nip) return;
 
     const role = newSupervisor.role;
-    const id = role === 'kepsek' ? 'kepsek_' + newSupervisor.nip : newSupervisor.nip;
-    const username = role === 'kepsek' ? 'kepsek' : newSupervisor.nip;
+    const id = newSupervisor.nip;
+    const username = newSupervisor.nip;
 
     const payload = {
       id,
