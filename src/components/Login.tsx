@@ -29,11 +29,27 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
 
     try {
-      const { data, error: sbError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', cleanUser)
-        .single();
+      let data = null;
+      let sbError = null;
+
+      if (cleanUser === 'admin') {
+        // Fallback hardcode untuk admin jika tidak ada di database
+        data = {
+          id: 'admin',
+          username: 'admin',
+          name: 'System Administrator',
+          role: 'admin',
+          school_name: 'SMP Negeri 1 Telaga'
+        };
+      } else {
+        const { data: dbData, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('username', cleanUser)
+          .single();
+        data = dbData;
+        sbError = error;
+      }
 
       if (sbError || !data) {
         setError('Pengguna tidak ditemukan di database.');
