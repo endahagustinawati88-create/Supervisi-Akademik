@@ -368,78 +368,28 @@ export const DUMMY_HEADMASTER: User = {
 };
 
 export const DUMMY_TEACHERS: User[] = [
-  {
-    id: '198808122015032001',
-    username: '198808122015032001',
-    name: 'Endah Agustinawati, S.Pd',
-    role: 'guru',
-    nip: '198808122015032001',
-    schoolName: 'SMP Negeri 1 Telaga',
-    className: 'VIII-A',
-    subject: 'Bahasa Inggris',
-    photoUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200',
-    driveUrl: 'https://docs.google.com/document/d/1x2y3z/edit',
-    supervisionSchedule: 'Rabu, 15 Juli 2026 / 08:30 - 10:00',
-    moduleIdentity: {
-      topic: 'Narrative Text: Fables',
-      timeAllocation: '2 x 40 Menit',
-      targetPhase: 'Fase A'
-    }
-  },
-  {
-    id: '199002152019031002',
-    username: '199002152019031002',
-    name: 'Ahmad Subagio, S.Pd',
-    role: 'guru',
-    nip: '199002152019031002',
-    schoolName: 'SMP Negeri 1 Telaga',
-    className: 'IX-C',
-    subject: 'Matematika',
-    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
-    driveUrl: 'https://docs.google.com/document/d/4a5b6c/edit',
-    supervisionSchedule: 'Jumat, 17 Juli 2026 / 10:15 - 11:45',
-    moduleIdentity: {
-      topic: 'Persamaan Kuadrat',
-      timeAllocation: '2 x 40 Menit',
-      targetPhase: 'Fase A'
-    }
-  },
-  {
-    id: '198504012010012005',
-    username: '198504012010012005',
-    name: 'Siti Rahma, M.Pd',
-    role: 'guru',
-    nip: '198504012010012005',
-    schoolName: 'SMP Negeri 1 Telaga',
-    className: 'VII-B',
-    subject: 'IPA Terpadu',
-    photoUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200',
-    driveUrl: 'https://docs.google.com/document/d/7p8q9r/edit',
-    supervisionSchedule: 'Senin, 20 Juli 2026 / 07:30 - 09:00',
-    moduleIdentity: {
-      topic: 'Sistem Organisasi Kehidupan',
-      timeAllocation: '2 x 40 Menit',
-      targetPhase: 'Fase A'
-    }
-  },
-  {
-    id: '199211052020121003',
-    username: '199211052020121003',
-    name: 'Rian Hidayat, S.Kom',
-    role: 'guru',
-    nip: '199211052020121003',
-    schoolName: 'SMP Negeri 1 Telaga',
-    className: 'IX-A',
-    subject: 'Informatika',
-    photoUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200',
-    driveUrl: 'https://docs.google.com/document/d/9x0y1z/edit',
-    supervisionSchedule: 'Kamis, 23 Juli 2026 / 13:00 - 14:30',
-    moduleIdentity: {
-      topic: 'Berpikir Komputasional',
-      timeAllocation: '2 x 40 Menit',
-      targetPhase: 'Fase A'
-    }
-  }
+  { id: '196809202008011008', username: '196809202008011008', name: 'MUFRODI,S.Pd', role: 'guru', nip: '196809202008011008', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198507272009022013', username: '198507272009022013', name: 'IVA FAIZAH,S.Pd.SD', role: 'guru', nip: '198507272009022013', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '197709272014061001', username: '197709272014061001', name: 'ARIS ALFAKHRIN YUSUF,S.Pd.SD', role: 'guru', nip: '197709272014061001', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '197503172022212007', username: '197503172022212007', name: 'SRI HARTATIK,S.Pd', role: 'guru', nip: '197503172022212007', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198105012022212012', username: '198105012022212012', name: 'MEIFI ROKHMANINGTIYAS,S.Pd', role: 'guru', nip: '198105012022212012', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '196810042007012016', username: '196810042007012016', name: 'Dra. KUNAENI', role: 'guru', nip: '196810042007012016', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '199612222022212014', username: '199612222022212014', name: 'ZURAIDAH FIRDAUSY,S.Pd', role: 'guru', nip: '199612222022212014', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '199609212022212023', username: '199609212022212023', name: 'PRESTITY NING FITROH ALIF,S.Pd', role: 'guru', nip: '199609212022212023', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '199205252022212025', username: '199205252022212025', name: 'SAKINAH MEINDAHSARI SURIPTO,S.Pd', role: 'guru', nip: '199205252022212025', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198708062022212006', username: '198708062022212006', name: 'KHOIRIN NISAK,S.Pd', role: 'guru', nip: '198708062022212006', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '199303082020122010', username: '199303082020122010', name: 'RETNO WULANDARI, S.Pd', role: 'guru', nip: '199303082020122010', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198507022020122010', username: '198507022020122010', name: 'SITI FAIZAH,S.Pd.SD', role: 'guru', nip: '198507022020122010', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '196907182007011022', username: '196907182007011022', name: 'AGUS ISWANTO,S.Pd', role: 'guru', nip: '196907182007011022', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '197606042008011019', username: '197606042008011019', name: 'KHOIRUL ANAM,S.Pd.SD', role: 'guru', nip: '197606042008011019', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '197811272023211005', username: '197811272023211005', name: 'FUADUN ZAHRI,S.Pd.I', role: 'guru', nip: '197811272023211005', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198208212014061001', username: '198208212014061001', name: 'DADANG TRI WICAKSONO,S.Pd.SD', role: 'guru', nip: '198208212014061001', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '197709052022211004', username: '197709052022211004', name: 'TAUFIQ,S.Pd', role: 'guru', nip: '197709052022211004', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '199009192022212010', username: '199009192022212010', name: 'FRANSISCA LUKITASARI,S.Pd', role: 'guru', nip: '199009192022212010', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198704132024211020', username: '198704132024211020', name: 'FAJAR ADI AULIYAH,S.Pd', role: 'guru', nip: '198704132024211020', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198709222022212014', username: '198709222022212014', name: 'RISA AINUL HAKIM,S.Pd', role: 'guru', nip: '198709222022212014', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '198607162024212027', username: '198607162024212027', name: 'ISTIQOMAH,S.Pd.I', role: 'guru', nip: '198607162024212027', schoolName: 'SDN Kalirejo Bangil' },
+  { id: '199212092024212043', username: '199212092024212043', name: 'LAILIYATUL MUFIDAH,S.Pd.I', role: 'guru', nip: '199212092024212043', schoolName: 'SDN Kalirejo Bangil' }
 ];
 
 // Helper to generate some high/mid scores for a dummy supervision log
@@ -549,7 +499,20 @@ export const initialSupervisions: Supervision[] = [
 
 export const getUsers = (): User[] => {
   const saved = localStorage.getItem('sipro_users');
-  if (saved) return JSON.parse(saved);
+  if (saved) {
+    let parsed = JSON.parse(saved);
+    // Jika tidak ada data guru hasil PDF di local storage (karena caching dari versi sebelumnya),
+    // kita injeksi DUMMY_TEACHERS ke dalam parsed users jika mereka belum ada.
+    const hasNewTeachers = parsed.some((u: User) => u.username === '196809202008011008');
+    if (!hasNewTeachers) {
+      // Hapus guru dummy lama
+      parsed = parsed.filter((u: User) => u.role !== 'guru' || u.id === '198808122015032001' /* kecualikan dummy lama jika mau di-wipe, atau biarkan */);
+      parsed = parsed.filter((u: User) => u.role !== 'guru'); // Wipe all old dummy teachers
+      parsed = [...parsed, ...DUMMY_TEACHERS];
+      localStorage.setItem('sipro_users', JSON.stringify(parsed));
+    }
+    return parsed;
+  }
   return [DUMMY_ADMIN, DUMMY_SUPERVISOR, DUMMY_HEADMASTER, ...DUMMY_TEACHERS];
 };
 

@@ -93,15 +93,15 @@ export const generateSupervisionPDF = (sup: Supervision) => {
   doc.setFontSize(10);
   doc.text('Mengetahui,', 14, currentY);
   doc.text('Kepala Sekolah', 14, currentY + 5);
-  doc.text('Supervisor', 120, currentY + 5);
+  doc.text('Guru yang Diobservasi', 120, currentY + 5);
 
   doc.setFont("helvetica", "bold");
   doc.text(sup.headmasterName || '_______________________', 14, currentY + 30);
-  doc.text(sup.supervisorName || '_______________________', 120, currentY + 30);
+  doc.text(sup.teacherName || '_______________________', 120, currentY + 30);
 
   doc.setFont("helvetica", "normal");
   doc.text(`NIP. ${sup.headmasterNip || '_________________'}`, 14, currentY + 35);
-  doc.text(`NIP. ${sup.supervisorNip || '_________________'}`, 120, currentY + 35);
+  doc.text(`NIP. ${sup.teacherId || '_________________'}`, 120, currentY + 35);
 
   doc.save(`Laporan_Supervisi_${sup.teacherName.replace(/\s+/g, '_')}_${sup.date}.pdf`);
 };

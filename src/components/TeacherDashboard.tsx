@@ -8,7 +8,7 @@ import {
   AlertCircle, MessageSquare, ListTodo, LogOut, Check, ChevronDown, UserCheck, HelpCircle, Download, ClipboardList
 } from 'lucide-react';
 import { 
-  ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip
+  ResponsiveContainer, RadialBarChart, RadialBar, Legend, Tooltip
 } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -75,10 +75,16 @@ export default function TeacherDashboard({
     }
     const percentage = maxPossible > 0 ? Math.round((scoreSum / maxPossible) * 100) : 0;
 
+    // Add color based on index
+    const colors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4', '#14b8a6'];
+    const color = colors[categories.indexOf(cat) % colors.length];
+    
     return {
+      name: cat.label.substring(0, 15) + (cat.label.length > 15 ? '...' : ''), // shorter name for legend
       subject: cat.label,
       Persentase: percentage,
-      fullMark: 100
+      fullMark: 100,
+      fill: color
     };
   });
 
@@ -248,14 +254,24 @@ export default function TeacherDashboard({
                   <div className="bg-slate-900/50 border border-slate-800/80 p-4 rounded-2xl flex flex-col justify-between sm:col-span-2">
                     <div className="flex justify-between items-start">
                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Hasil Observasi Terakhir</span>
-                      <button
-                        onClick={() => generateSupervisionPDF(latestSup)}
-                        className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/30 rounded-lg text-emerald-400 cursor-pointer inline-flex items-center gap-1.5"
-                        title="Download PDF"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-bold pr-1">Unduh Laporan</span>
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => window.print()}
+                          className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 cursor-pointer inline-flex items-center gap-1.5"
+                          title="Cetak Halaman"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                          <span className="text-[10px] font-bold pr-1">Cetak Halaman</span>
+                        </button>
+                        <button
+                          onClick={() => generateSupervisionPDF(latestSup)}
+                          className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500/30 rounded-lg text-emerald-400 cursor-pointer inline-flex items-center gap-1.5"
+                          title="Cetak PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="text-[10px] font-bold pr-1">Cetak Laporan PDF</span>
+                        </button>
+                      </div>
                     </div>
                     <div className="flex items-baseline gap-2.5 mt-2">
                       <span className="text-4xl font-black text-emerald-400">{latestSup.finalScore}%</span>
@@ -282,13 +298,21 @@ export default function TeacherDashboard({
                     <h3 className="text-xs font-bold text-white mb-3 self-start">Grafik Profil Kompetensi Mengajar</h3>
                     <div className="h-60 w-full flex items-center justify-center">
                       <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={aspectRadarData}>
-                          <PolarGrid stroke="#1e293b" />
-                          <PolarAngleAxis dataKey="subject" stroke="#94a3b8" fontSize={9} />
-                          <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#475569" fontSize={8} />
-                          <Radar name="Capaian Anda" dataKey="Persentase" stroke="#10b981" fill="#10b981" fillOpacity={0.25} />
+                        <RadialBarChart 
+                          cx="50%" cy="50%" innerRadius="20%" outerRadius="100%" 
+                          barSize={15} data={aspectRadarData}
+                        >
+                          <RadialBar
+                            minAngle={15}
+                            label={{ position: 'insideStart', fill: '#fff', fontSize: 10 }}
+                            background={{ fill: '#1e293b' }}
+                            clockWise
+                            dataKey="Persentase"
+                            cornerRadius={10}
+                          />
                           <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} />
-                        </RadarChart>
+                          <Legend iconSize={10} layout="vertical" verticalAlign="middle" wrapperStyle={{ fontSize: '10px', color: '#94a3b8' }} />
+                        </RadialBarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
