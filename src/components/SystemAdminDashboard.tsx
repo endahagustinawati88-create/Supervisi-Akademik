@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, AppSettings, InstrumentItem } from '../types';
 import { Settings, Users, LogOut, Plus, Trash2, ShieldCheck, Edit, BookOpen, ClipboardList } from 'lucide-react';
 import { motion } from 'motion/react';
-import { supabase } from '../lib/supabase';
+import { getUsers, saveUsers, getAppSettings, saveAppSettings as saveSettingsLocal } from '../data';
 import { getInstrumentItems, saveInstrumentItems, getCategories, saveCategories, Category } from '../data';
 
 interface Props {
@@ -93,23 +93,14 @@ export default function SystemAdminDashboard({ currentUser, onLogout }: Props) {
       setIsLoading(true);
       try {
         // Fetch Settings
-        const { data: settingsData } = await supabase.from('app_settings').select('*').eq('id', 1).single();
-        if (settingsData) {
-          setAppSettings({
-            appName: settingsData.app_name,
-            schoolName: settingsData.school_name,
-            themeColor: settingsData.theme_color
-          });
-        }
+        setAppSettings(getAppSettings());
 
         // Fetch Users
-        const { data: usersData } = await supabase.from('users').select('*');
-        if (usersData) {
-          const teachers = usersData.filter(u => u.role === 'guru').map(mapDbToUser);
-          const supervisors = usersData.filter(u => u.role === 'pengawas' || u.role === 'kepsek').map(mapDbToUser);
-          setLocalTeachers(teachers);
-          setLocalSupervisors(supervisors);
-        }
+        const usersData = getUsers();
+        const teachers = usersData.filter(u => u.role === 'guru');
+        const supervisors = usersData.filter(u => u.role === 'pengawas' || u.role === 'kepsek');
+        setLocalTeachers(teachers);
+        setLocalSupervisors(supervisors);
       } catch (err) {
         console.error(err);
       } finally {
@@ -120,34 +111,12 @@ export default function SystemAdminDashboard({ currentUser, onLogout }: Props) {
     fetchData();
   }, []);
 
-  const mapDbToUser = (data: any): User => ({
-    id: data.id,
-    username: data.username,
-    name: data.name,
-    role: data.role,
-    nip: data.nip,
-    schoolName: data.school_name,
-    className: data.class_name,
-    subject: data.subject,
-    photoUrl: data.photo_url,
-    driveUrl: data.drive_url,
-    supervisionSchedule: data.supervision_schedule,
-    moduleIdentity: data.module_topic ? {
-      topic: data.module_topic,
-      timeAllocation: data.module_time_allocation,
-      targetPhase: data.module_target_phase
-    } : undefined
-  });
+  const mapDbToUser = (data: any): User => (data as User);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await supabase.from('app_settings').upsert({
-        id: 1,
-        app_name: appSettings.appName,
-        school_name: appSettings.schoolName,
-        theme_color: appSettings.themeColor
-      });
+      saveSettingsLocal(appSettings);
       setSettingsSuccess(true);
       setTimeout(() => setSettingsSuccess(false), 3000);
     } catch (err) {
@@ -183,12 +152,11 @@ export default function SystemAdminDashboard({ currentUser, onLogout }: Props) {
     };
 
     try {
-      const { data, error } = await supabase.from('users').insert([payload]).select().single();
-      if (error) throw error;
-      if (data) {
-        setLocalTeachers([...localTeachers, mapDbToUser(data)]);
-        setNewTeacher({ name: '', nip: '', subject: '', className: '', driveUrl: '', supervisionSchedule: '', topic: '', timeAllocation: '', targetPhase: '' });
-      }
+      const users = getUsers();
+      users.push(payload as User);
+      saveUsers(users);
+      setLocalTeachers([...localTeachers, payload as User]);
+      setNewTeacher({ name: '', nip: '', subject: '', className: '', driveUrl: '', supervisionSchedule: '', topic: '', timeAllocation: '', targetPhase: '' });
     } catch (err) {
       console.error(err);
     }
@@ -196,7 +164,8 @@ export default function SystemAdminDashboard({ currentUser, onLogout }: Props) {
   
   const handleDeleteTeacher = async (id: string) => {
     try {
-      await supabase.from('users').delete().eq('id', id);
+      const users = getUsers().filter(u => u.id !== id);
+      saveUsers(users);
       setLocalTeachers(localTeachers.filter(t => t.id !== id));
     } catch (err) {
       console.error(err);
@@ -223,12 +192,11 @@ export default function SystemAdminDashboard({ currentUser, onLogout }: Props) {
     };
 
     try {
-      const { data, error } = await supabase.from('users').insert([payload]).select().single();
-      if (error) throw error;
-      if (data) {
-        setLocalSupervisors([...localSupervisors, mapDbToUser(data)]);
-        setNewSupervisor({ name: '', nip: '', role: 'pengawas' });
-      }
+      const users = getUsers();
+      users.push(payload as User);
+      saveUsers(users);
+      setLocalSupervisors([...localSupervisors, payload as User]);
+      setNewSupervisor({ name: '', nip: '', role: 'pengawas' });
     } catch (err) {
       console.error(err);
     }
@@ -236,7 +204,8 @@ export default function SystemAdminDashboard({ currentUser, onLogout }: Props) {
   
   const handleDeleteSupervisor = async (id: string) => {
     try {
-      await supabase.from('users').delete().eq('id', id);
+      const users = getUsers().filter(u => u.id !== id);
+      saveUsers(users);
       setLocalSupervisors(localSupervisors.filter(s => s.id !== id));
     } catch (err) {
       console.error(err);

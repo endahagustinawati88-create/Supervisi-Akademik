@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { InstrumentItem, User, Supervision, PredicateType } from '../types';
 import { getInstrumentItems, getCategories } from '../data';
-import { supabase } from '../lib/supabase';
+import { getUsers } from '../data';
 import { 
   ArrowLeft, Save, CheckCircle, CheckCircle2, Award, 
   Calendar, BookOpen, Layers, Edit3, ClipboardList, PenTool, Check, AlertTriangle, Sparkles 
@@ -57,22 +57,13 @@ export default function SupervisionForm({ supervision, onSave, onCancel, current
 
   useEffect(() => {
     const fetchUsers = async () => {
-      const { data } = await supabase.from('users').select('*');
+      const data = getUsers();
       if (data) {
-        setTeachers(data.filter((d: any) => d.role === 'guru').map((d: any) => ({
-          id: d.id,
-          username: d.username,
-          name: d.name,
-          role: d.role,
-          nip: d.nip,
-          schoolName: d.school_name,
-          className: d.class_name,
-          subject: d.subject
-        })));
-        const pengawasData = data.find((d: any) => d.role === 'pengawas');
-        if (pengawasData) setPengawasUser({ name: pengawasData.name, nip: pengawasData.nip } as User);
-        const kepsekData = data.find((d: any) => d.role === 'kepsek');
-        if (kepsekData) setKepsekUser({ name: kepsekData.name, nip: kepsekData.nip } as User);
+        setTeachers(data.filter(d => d.role === 'guru'));
+        const pengawasData = data.find(d => d.role === 'pengawas');
+        if (pengawasData) setPengawasUser(pengawasData);
+        const kepsekData = data.find(d => d.role === 'kepsek');
+        if (kepsekData) setKepsekUser(kepsekData);
       }
     };
     fetchUsers();

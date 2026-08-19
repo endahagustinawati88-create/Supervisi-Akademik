@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Supervision, PredicateType, SupervisionCategory } from '../types';
 import { getInstrumentItems, getCategories } from '../data';
-import { supabase } from '../lib/supabase';
+import { getUsers } from '../data';
 import { 
   Users, Award, Calendar, BookOpen, Search, Filter, ClipboardList, 
   Plus, ArrowUpRight, BarChart3, Clock, Trash2, Edit2, Eye, UserPlus, X, LogOut, Download 
@@ -43,29 +43,26 @@ export default function AdminDashboard({
     const fetchTeachers = async () => {
       setIsLoadingTeachers(true);
       try {
-        const { data, error } = await supabase.from('users').select('*').eq('role', 'guru');
-        if (error) throw error;
-        if (data) {
-          const mappedTeachers: User[] = data.map((d: any) => ({
+        const users = getUsers();
+        const mappedTeachers = users.filter((u: any) => u.role === 'guru').map((d: any) => ({
             id: d.id,
             username: d.username,
             name: d.name,
             role: d.role,
             nip: d.nip,
-            schoolName: d.school_name,
-            className: d.class_name,
+            schoolName: d.schoolName,
+            className: d.className,
             subject: d.subject,
-            photoUrl: d.photo_url,
-            driveUrl: d.drive_url,
-            supervisionSchedule: d.supervision_schedule,
-            moduleIdentity: d.module_topic ? {
-              topic: d.module_topic,
-              timeAllocation: d.module_time_allocation,
-              targetPhase: d.module_target_phase
+            photoUrl: d.photoUrl,
+            driveUrl: d.driveUrl,
+            supervisionSchedule: d.supervisionSchedule,
+            moduleIdentity: d.topic ? {
+              topic: d.topic,
+              timeAllocation: d.timeAllocation,
+              targetPhase: d.targetPhase
             } : undefined
-          }));
-          setLocalTeachers(mappedTeachers);
-        }
+        }));
+        setLocalTeachers(mappedTeachers);
       } catch (err) {
         console.error(err);
       } finally {

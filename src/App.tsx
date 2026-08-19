@@ -6,7 +6,7 @@ import TeacherDashboard from './components/TeacherDashboard';
 import SystemAdminDashboard from './components/SystemAdminDashboard';
 import SupervisionForm from './components/SupervisionForm';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from './lib/supabase';
+import { getSupervisions, saveSupervisions } from './data';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -33,30 +33,10 @@ export default function App() {
     const fetchSupervisions = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.from('supervisions').select('*').order('date', { ascending: false });
-        if (error) throw error;
-        
-        if (data) {
-          const transformed: Supervision[] = data.map((d: any) => {
-            // We stored the JSON representation in the `notes` column to bypass strict SQL schema limitations
-            if (d.notes && d.notes.startsWith('{')) {
-              try {
-                const parsed = JSON.parse(d.notes);
-                return {
-                  ...parsed,
-                  id: d.id, // preserve UUID
-                  teacherId: d.teacher_id,
-                  date: d.date,
-                };
-              } catch (e) {
-                // Ignore parse errors
-              }
-            }
-            return null;
-          }).filter(Boolean) as Supervision[];
-          
-          setSupervisions(transformed);
-        }
+        const supervisions = getSupervisions();
+        // sort by date descending
+        supervisions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setSupervisions(supervisions);
       } catch (err) {
         console.error('Error fetching supervisions:', err);
       } finally {
@@ -103,52 +83,29 @@ export default function App() {
 
   const handleDeleteSupervision = async (id: string) => {
     // If it's a UUID we delete from DB. If it's a local 'sup-xxx' string that hasn't synced properly (rare but possible), just filter.
-    if (id.includes('-')) {
-      try {
-        await supabase.from('supervisions').delete().eq('id', id);
-      } catch (err) {
-        console.error('Error deleting supervision:', err);
-      }
-    }
     const filtered = supervisions.filter(s => s.id !== id);
     setSupervisions(filtered);
+    saveSupervisions(filtered);
   };
 
   const handleSaveSupervision = async (updatedSup: Supervision) => {
     try {
-      const exists = supervisions.some(s => s.id === updatedSup.id);
-      const isUUID = updatedSup.id.includes('-') && updatedSup.id.length > 20;
-
-      // Map UI status to DB Enum Status
-      const dbStatus = updatedSup.status === 'Draft' ? 'Sedang Berjalan' : 'Selesai';
-      
-      const payload = {
-        teacher_id: updatedSup.teacherId,
-        date: updatedSup.date,
-        category: 'Pelaksanaan Pembelajaran',
-        status: dbStatus,
-        score: updatedSup.finalScore,
-        notes: JSON.stringify(updatedSup), // Serialize full object to notes
-        feedback: updatedSup.generalFeedback || 'No feedback'
-      };
-
-      if (exists && isUUID) {
-        const { error } = await supabase.from('supervisions').update(payload).eq('id', updatedSup.id);
-        if (error) throw error;
-        setSupervisions(prev => prev.map(s => s.id === updatedSup.id ? updatedSup : s));
+      let newSupervisions = [...supervisions];
+      if (updatedSup.id && newSupervisions.some(s => s.id === updatedSup.id)) {
+        newSupervisions = newSupervisions.map(s => s.id === updatedSup.id ? updatedSup : s);
       } else {
-        const { data, error } = await supabase.from('supervisions').insert([payload]).select().single();
-        if (error) throw error;
-        if (data) {
-          updatedSup.id = data.id; // Get the generated UUID
-          setSupervisions(prev => [updatedSup, ...prev.filter(s => s.id !== updatedSup.id)]);
+        if (!updatedSup.id) {
+            updatedSup.id = 'sup-' + Date.now();
         }
+        newSupervisions = [updatedSup, ...newSupervisions];
       }
+      setSupervisions(newSupervisions);
+      saveSupervisions(newSupervisions);
+      
       setIsFormOpen(false);
       setSelectedSupervision(null);
     } catch (err) {
       console.error('Error saving supervision:', err);
-      alert('Gagal menyimpan ke database Supabase. Periksa log konsol.');
     }
   };
 

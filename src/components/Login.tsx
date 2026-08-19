@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import { BookOpen, UserCheck, Key, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
-import { supabase } from '../lib/supabase';
+import { getUsers } from '../data';
 
 interface LoginProps {
   onLoginSuccess: (user: User) => void;
@@ -29,29 +29,10 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     }
 
     try {
-      let data = null;
-      let sbError = null;
+      const users = getUsers();
+      const data = users.find(u => u.username === cleanUser);
 
-      if (cleanUser === 'admin') {
-        // Fallback hardcode untuk admin jika tidak ada di database
-        data = {
-          id: 'admin',
-          username: 'admin',
-          name: 'System Administrator',
-          role: 'admin',
-          school_name: 'SMP Negeri 1 Telaga'
-        };
-      } else {
-        const { data: dbData, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('username', cleanUser)
-          .single();
-        data = dbData;
-        sbError = error;
-      }
-
-      if (sbError || !data) {
+      if (!data) {
         setError('Pengguna tidak ditemukan di database.');
         setIsLoading(false);
         return;

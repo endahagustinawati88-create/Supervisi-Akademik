@@ -546,3 +546,37 @@ export const initialSupervisions: Supervision[] = [
     updatedAt: '2026-07-02T10:00:00Z'
   }
 ];
+
+export const getUsers = (): User[] => {
+  const saved = localStorage.getItem('sipro_users');
+  if (saved) return JSON.parse(saved);
+  return [DUMMY_ADMIN, DUMMY_SUPERVISOR, DUMMY_HEADMASTER, ...DUMMY_TEACHERS];
+};
+
+export const saveUsers = (users: User[]) => {
+  localStorage.setItem('sipro_users', JSON.stringify(users));
+};
+
+export const getSupervisions = (): Supervision[] => {
+  const saved = localStorage.getItem('sipro_supervisions');
+  if (saved) return JSON.parse(saved);
+  return initialSupervisions;
+};
+
+export const saveSupervisions = (supervisions: Supervision[]) => {
+  localStorage.setItem('sipro_supervisions', JSON.stringify(supervisions));
+};
+
+export const getAppSettings = () => {
+  const saved = localStorage.getItem('sipro_app_settings');
+  if (saved) return JSON.parse(saved);
+  return {
+    appName: 'SIPRO-BELAJAR',
+    schoolName: 'SMP Negeri 1 Telaga',
+    themeColor: 'emerald'
+  };
+};
+
+export const saveAppSettings = (settings: any) => {
+  localStorage.setItem('sipro_app_settings', JSON.stringify(settings));
+};
