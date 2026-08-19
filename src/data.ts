@@ -350,8 +350,8 @@ export const DUMMY_ADMIN: User = {
 };
 
 export const DUMMY_SUPERVISOR: User = {
-  id: 'pengawas',
-  username: 'pengawas',
+  id: '197101241992021001',
+  username: '197101241992021001',
   name: 'Imran Tululi, S.Pd, M.Pd',
   role: 'pengawas',
   nip: '197101241992021001',

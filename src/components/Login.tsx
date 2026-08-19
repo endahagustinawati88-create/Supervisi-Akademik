@@ -41,9 +41,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       // Validasi password hardcode sesuai role (untuk prototype)
       const role = data.role;
       const isValidPassword = 
-        (role === 'kepsek' && cleanPass === '12345') ||
-        (role === 'guru' && cleanPass === '123') || 
-        (role !== 'guru' && role !== 'kepsek' && cleanPass === '1');
+        (role === 'admin' && cleanPass === '1') ||
+        ((role === 'guru' || role === 'kepsek' || role === 'pengawas') && cleanPass === '12345');
 
       if (!isValidPassword) {
         setError('Password salah.');
